@@ -65,8 +65,16 @@ typedef struct {
     ui VirtualAddress;     
     ui RawSize;             
     ui PointerToRawData;    
-    uc garbage[12];         
+    uc garbage[16];         
 } SECTION_HEADER;
+
+typedef struct{
+    ui OriginalFirstThunk;
+    ui TimeDateStamp;
+    ui ForwarderChain;
+    ui Name;
+    ui FirstThunk;
+}IMPORT_TABLE;
 #pragma pack(pop) 
 
 #endif 
