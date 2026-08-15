@@ -231,11 +231,9 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
                     fputs("\n",pathtosave);
                 }
             }
-            CurrentAddress+=step;
-
-
-            
+            CurrentAddress+=step;     
         }
+        ImportTbl++;
 
     }
     
