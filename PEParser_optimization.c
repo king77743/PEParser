@@ -1,49 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "pe_structures.h"
-void us_to_dec(unsigned short value, char* out_buf) {
-    int pos = 6; 
-    out_buf[pos] = '\0';
-    if (value == 0) {
-        out_buf[--pos] = '0';
-    } else {
-        while (value > 0) {
-            out_buf[--pos] = '0' + (value % 10); 
-            value /= 10;
-        }
-    }
-    int start = 0;
-    while (out_buf[pos] != '\0') {
-        out_buf[start++] = out_buf[pos++];
-    }
-    out_buf[start] = '\0';
-}
+#include "log.h"
 
-void HEX(void * value,unsigned char bytes,unsigned char* hex_buffer){
-    char hex[]="0123456789ABCDEF";
-    unsigned char * byte_ptr=(unsigned char*)value;
-    int position=0;
-    for (signed char i=bytes-1;i>=0;i--){
-        unsigned char current_byte=byte_ptr[i];
-        hex_buffer[position++]=hex[(current_byte>>4)&0x0F];
-        hex_buffer[position++]=hex[current_byte&0x0F];
-    }
-    hex_buffer[position]='\0';
-}
-ui RVAtoRAW(ui rva,SECTION_HEADER* section ,us sectioncount){
-    if(rva<section[0].VirtualAddress){
-        return rva;
-    }
-    for (us i=0;i<sectioncount;i++){
-        if(rva>=section[i].VirtualAddress && rva<section[i].VirtualAddress+section[i].VirtualSize){
-            return rva-section[i].VirtualAddress+section[i].PointerToRawData;
-        }
-    }
-    return 0;
-}
 ui parser(wchar_t * path,wchar_t* PathToSave){
     uc is64=0;
     ui ImportRVA=0;
+    ui ExportRVA=0;
+    ui ExportTableStart=0;
+    ui ExportTableEnd=0;
     char OutBuffer[20];
     FILE *program=_wfopen(path,L"rb");
     if (program==NULL){
@@ -93,36 +59,24 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
     if (ArchMagic==0x20B){
         is64=1;
         fputs("\t=== FILE IS 64-BIT ===\n",pathtosave);
+        LogFileHeader(pathtosave,FileHdr);
         OPTIONAL_HEADER_64 * OptHdr64=(OPTIONAL_HEADER_64*)PtrToOptional;
         ImportRVA=OptHdr64->ImportRVA;
-        HEX(&(OptHdr64->EntryPoint),sizeof(OptHdr64->EntryPoint),OutBuffer); 
-        fputs("Entry point RVA: ",pathtosave);fputs(OutBuffer,pathtosave);fputs("\n",pathtosave);
-        HEX(&ImportRVA, sizeof(ImportRVA), OutBuffer);
-        fputs("Import Table RVA: ", pathtosave); fputs(OutBuffer, pathtosave); fputs("\n", pathtosave);
-        if (OptHdr64->SecurityRAW!=0){
-            HEX(&(OptHdr64->SecurityRAW),sizeof(OptHdr64->SecurityRAW),OutBuffer);
-            fputs("Digital Signature: SIGNED (Offset: ", pathtosave);fputs(OutBuffer, pathtosave); fputs(")\n", pathtosave);
-        }
-        else{
-            fputs("Digital Signature: NOT SIGNED\n",pathtosave);
-        }
+        ExportRVA=OptHdr64->ExportRVA;
+        ExportTableStart=OptHdr64->ExportRVA;
+        ExportTableEnd=OptHdr64->ExportSize;
+        LogOptHdr64(pathtosave,OptHdr64);
+        
     }
     else if(ArchMagic==0x10B){
         fputs("\t=== FILE IS 32-BIT ===\n",pathtosave);
-        
+        LogFileHeader(pathtosave,FileHdr);
         OPTIONAL_HEADER_32 * OptHdr32=(OPTIONAL_HEADER_32*)PtrToOptional;
         ImportRVA=OptHdr32->ImportRVA;
-        HEX(&(OptHdr32->EntryPoint),sizeof(OptHdr32->EntryPoint),OutBuffer); 
-        fputs("Entry point RVA: ",pathtosave);fputs(OutBuffer,pathtosave);fputs("\n",pathtosave);
-        HEX(&ImportRVA, sizeof(ImportRVA), OutBuffer);
-        fputs("Import Table RVA: ", pathtosave); fputs(OutBuffer, pathtosave); fputs("\n", pathtosave);
-        if (OptHdr32->SecurityRAW!=0){
-            HEX(&(OptHdr32->SecurityRAW),sizeof(OptHdr32->SecurityRAW),OutBuffer);
-            fputs("Digital Signature: SIGNED (Offset: ", pathtosave);fputs(OutBuffer, pathtosave); fputs(")\n", pathtosave);
-        }
-        else{
-            fputs("Digital Signature: NOT SIGNED\n",pathtosave);
-        }
+        ExportRVA=OptHdr32->ExportRVA;
+        ExportTableStart=OptHdr32->ExportRVA;
+        ExportTableEnd=OptHdr32->ExportSize;
+        LogOptHdr32(pathtosave,OptHdr32);
     }
     uc* section_buffer_size=(uc*)malloc(SectionCount*64+1);
     ui buffer_size=FileHdr->SectionCount*64+1;
@@ -133,8 +87,12 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
         return -1;
     }
     ui char_written=0;
-
     SECTION_HEADER * SectionTable=(SECTION_HEADER*)(PtrToOptional+FileHdr->SizeOfOptinalHeader);
+    if(ExportRVA!=0){
+        ui ExportTblRAW=RVAtoRAW(ExportRVA,SectionTable,SectionCount);
+        EXPORT_TABLE* ExportTbl=(EXPORT_TABLE*)(file_buffer+ExportTblRAW);
+        ExportTableParser(file_buffer,pathtosave,ExportTbl,SectionTable,SectionCount,ExportTableStart,ExportTableEnd);
+    }
     for (us SectionNow=0;SectionNow<FileHdr->SectionCount;SectionNow++){
         ui space=buffer_size-char_written;
         int bytes=snprintf((char*)section_buffer_size+char_written,space,"Section %d: %.8s | RVA: 0x%X | RAW: 0x%X\n", 
@@ -222,7 +180,6 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
                     fputs("\t",pathtosave);
                     fputs("[ERROR] Invalid Function Name RVA",pathtosave);
                     fputs("\n",pathtosave);
-                    
                 }
                 else{
                     char *FuncName=(char*)(file_buffer+FuncNameRAW+2);
@@ -231,12 +188,10 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
                     fputs("\n",pathtosave);
                 }
             }
-            CurrentAddress+=step;     
+            CurrentAddress+=step;  
         }
         ImportTbl++;
-
     }
-    
     free(file_buffer);
     free(section_buffer_size);
     puts("Log file is done!");
@@ -249,16 +204,10 @@ ui main(){
     int i = 0;
     while (path[i] != L'\0') {
         if (path[i] == L'\n') {
-            if(path[i-1]=='e' && path[i-2]=='x' && path[i-3]=='e' && path[i-4]=='.'){
-                path[i] = L'\0';
-                break; 
+            path[i] = L'\0';
+            break; 
             }
-            else{
-                puts("Only exe files!");
-                return -1;
-            }
-        }
-        i++;
+            i++;
     }
     wchar_t PathToSave[261];
     printf("Path to save result: ");
