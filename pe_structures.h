@@ -26,37 +26,129 @@ typedef struct {
 
 typedef struct {
     us magic;
-    uc garbage1[14];
+    uc MajorLinker;
+    uc MinorLinker;
+    ui SizeOfCode;
+    ui SizeOfInitializedData;
+    ui SizeOfUninitializedData;
     ui EntryPoint;
     ui BaseOfCode;
     u64 ImageBase;
-    uc garbage2[80];
+    ui SectionAlignment;
+    ui FileAligment;
+    us MajorOS;
+    us MinorOs;
+    us MajorImage;
+    us MinorImage;
+    us MajorSubsystem;
+    us MinorSubsystem;
+    ui Win32VersionValue;
+    ui SizeOfImage;
+    ui SizeOfHeaders;
+    ui Checksum;
+    us Subsystem;
+    us DllCharacteristics;
+    u64 SizeOfStackReserve;
+    u64 SizeOfStackCommit;
+    u64 SizeOfHeapReserve;
+    u64 SizeOfHeapCommit;
+    ui LoaderFlags;
+    ui NumberOfRvaAndSizes;
     ui ExportRVA;
     ui ExportSize;
     ui ImportRVA;
     ui ImportSize;
-    uc garbage3[16];
+    ui ResourceRVA;
+    ui ResourceSize;
+    ui ExcteptionRVA;
+    ui ExcteptionSize;
     ui SecurityRAW;
     ui SecuritySize;
-    uc garbage4[88];
+    ui BaseRelocationTableRVA;
+    ui BaseRelocationTableSize;
+    ui DebugRVA;
+    ui DebugSize;
+    ui ArchitectureSpecificDataRVA;
+    ui ArchitectureSpecificDataSize;
+    ui GlobalPRTRVA;
+    ui GlobalPTRSize;
+    ui TLSDirectoryRVA;
+    ui TLSDirectorySize;
+    ui LoadConfigurationDirectoryRVA;
+    ui LoadConfigurationDirectorySize;
+    ui BoundImportDirectoryRVA;
+    ui BoundImportDirectorySize;
+    ui ImportAddressTableRVA;
+    ui ImportAddressTableSize;
+    ui DelayLoadImportDescriptorsRVA;
+    ui DelayLoadImportDescriptorsSize;
+    ui NET_RVA;
+    ui NET_Size;
+    uc garbage[8];
 } OPTIONAL_HEADER_64;
 
 typedef struct {
     us magic;
-    uc garbage1[14];
+    uc MajorLinker;
+    uc MinorLinker;
+    ui SizeOfCode;
+    ui SizeOfInitializedData;
+    ui SizeOfUninitializedData;
     ui EntryPoint;
     ui BaseOfCode;
     ui BaseOfData;
     ui ImageBase;
-    uc garbage2[64];
+    ui SectionAlignment;
+    ui FileAligment;
+    us MajorOS;
+    us MinorOs;
+    us MajorImage;
+    us MinorImage;
+    us MajorSubsystem;
+    us MinorSubsystem;
+    ui Win32VersionValue;
+    ui SizeOfImage;
+    ui SizeOfHeaders;
+    ui Checksum;
+    us Subsystem;
+    us DllCharacteristics;
+    ui SizeOfStackReserve;
+    ui SizeOfStackCommit;
+    ui SizeOfHeapReserve;
+    ui SizeOfHeapCommit;
+    ui LoaderFlags;
+    ui NumberOfRvaAndSizes;
     ui ExportRVA;
     ui ExportSize;
     ui ImportRVA;
     ui ImportSize;
-    uc garbage3[16];
+    ui ResourceRVA;
+    ui ResourceSize;
+    ui ExcteptionRVA;
+    ui ExcteptionSize;
     ui SecurityRAW;
     ui SecuritySize;
-    uc garbage4[88];
+    ui BaseRelocationTableRVA;
+    ui BaseRelocationTableSize;
+    ui DebugRVA;
+    ui DebugSize;
+    ui ArchitectureSpecificDataRVA;
+    ui ArchitectureSpecificDataSize;
+    ui GlobalPRTRVA;
+    ui GlobalPTRSize;
+    ui TLSDirectoryRVA;
+    ui TLSDirectorySize;
+    ui LoadConfigurationDirectoryRVA;
+    ui LoadConfigurationDirectorySize;
+    ui BoundImportDirectoryRVA;
+    ui BoundImportDirectorySize;
+    ui ImportAddressTableRVA;
+    ui ImportAddressTableSize;
+    ui DelayLoadImportDescriptorsRVA;
+    ui DelayLoadImportDescriptorsSize;
+    ui NET_RVA;
+    ui NET_Size;
+    uc garbage[8];
 } OPTIONAL_HEADER_32;
 
 typedef struct {
@@ -65,7 +157,11 @@ typedef struct {
     ui VirtualAddress;     
     ui RawSize;             
     ui PointerToRawData;    
-    uc garbage[16];         
+    ui PointerToRelocations;
+    ui PointerToLinenumbers;
+    us NumberOfRelocations;
+    us NumberOfLinenumbers;
+    ui Characteristics;
 } SECTION_HEADER;
 
 typedef struct{
@@ -75,6 +171,21 @@ typedef struct{
     ui Name;
     ui FirstThunk;
 }IMPORT_TABLE;
+
+typedef struct {
+    ui Characteristics;      
+    ui TimeDateStamp;        
+    us MajorVersion;         
+    us MinorVersion;         
+    ui Name;                 
+    ui Base;                 
+    ui NumberOfFunctions;    
+    ui NumberOfNames;        
+    ui AddressOfFunctions;   
+    ui AddressOfNames;       
+    ui AddressOfNameOrdinals;
+} EXPORT_TABLE;
+
 #pragma pack(pop) 
 
 #endif 
