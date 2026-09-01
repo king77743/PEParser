@@ -267,5 +267,31 @@ void ExportTableParser(uc* file_buffer, FILE* pathtosave, EXPORT_TABLE* ExportTb
     free(NameJOIN);
 }
 
+ui SectionTableParser(FILE* pathtosave, SECTION_HEADER* SectionTable, us SectionCount, char* section_buffer_size, ui buffer_size) {
+    if (!pathtosave || !SectionTable || !section_buffer_size || buffer_size == 0) return -1;
+    ui char_written = 0, bytes = 0;
+    bytes = (ui)snprintf(section_buffer_size + char_written, buffer_size - char_written,
+        "+-----+----------+-------------------+-------------------+\n"
+        "|  #  |   Name   |    Virtual RVA    |     Raw Offset    |\n"
+        "+-----+----------+-------------------+-------------------+\n");
+    if (bytes >= (buffer_size - char_written)) return -1;
+    char_written += bytes;
+    for (us SectionNow = 0; SectionNow < SectionCount; SectionNow++) {
+        ui space = buffer_size - char_written;
+        bytes = (ui)snprintf(section_buffer_size + char_written, space,
+            "| %-3d | %-8.8s |    0x%08X     |    0x%08X     |\n", 
+            SectionNow + 1, SectionTable[SectionNow].name, 
+            SectionTable[SectionNow].VirtualAddress, SectionTable[SectionNow].PointerToRawData);
+        if (bytes >= space) return -1;
+        char_written += bytes;
+    }
+    bytes = (ui)snprintf(section_buffer_size + char_written, buffer_size - char_written,
+        "+-----+----------+-------------------+-------------------+\n\n");
+    if (bytes >= (buffer_size - char_written)) return -1;
+    fputs(section_buffer_size, pathtosave);
+    return 0;
+}
+
+
 
 #endif 
