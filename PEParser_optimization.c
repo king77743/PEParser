@@ -3,7 +3,6 @@
 #include <time.h>
 #include "pe_structures.h"
 #include "log.h"
-
 ui parser(wchar_t * path,wchar_t* PathToSave){
     uc is64=0;
     ui ImportRVA=0;
@@ -78,38 +77,41 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
         ExportTableEnd=OptHdr32->ExportSize;
         LogOptHdr32(pathtosave,OptHdr32);
     }
-    uc* section_buffer_size=(uc*)malloc(SectionCount*64+1);
-    ui buffer_size=FileHdr->SectionCount*64+1;
+  
+    ui buffer_size = (SectionCount * 64) + 251;
+    uc* section_buffer_size = (uc*)malloc(buffer_size);
     if (section_buffer_size==NULL){
         puts("Memory allocattion for Section Table!");
         fclose(pathtosave);
         free(file_buffer);
         return -1;
     }
-    ui char_written=0;
     SECTION_HEADER * SectionTable=(SECTION_HEADER*)(PtrToOptional+FileHdr->SizeOfOptinalHeader);
+    if (SectionTableParser(pathtosave, SectionTable, SectionCount, (char*)section_buffer_size, buffer_size) != 0) {
+        puts("Sections are confused!");
+        fclose(pathtosave);
+        free(file_buffer);
+        free(section_buffer_size);
+        return -1;
+    }
+
     if(ExportRVA!=0){
         ui ExportTblRAW=RVAtoRAW(ExportRVA,SectionTable,SectionCount);
-        EXPORT_TABLE* ExportTbl=(EXPORT_TABLE*)(file_buffer+ExportTblRAW);
-        ExportTableParser(file_buffer,pathtosave,ExportTbl,SectionTable,SectionCount,ExportTableStart,ExportTableEnd);
-    }
-    for (us SectionNow=0;SectionNow<FileHdr->SectionCount;SectionNow++){
-        ui space=buffer_size-char_written;
-        int bytes=snprintf((char*)section_buffer_size+char_written,space,"Section %d: %.8s | RVA: 0x%X | RAW: 0x%X\n", 
-            SectionNow + 1, 
-            SectionTable[SectionNow].name, 
-            SectionTable[SectionNow].VirtualAddress, 
-            SectionTable[SectionNow].PointerToRawData);
-        if (bytes<0 || (ui)bytes>=space){
-            puts("Sections are confused!");
-            fclose(pathtosave);
-            free(file_buffer);
-            free(section_buffer_size);
-            return -1;
+        if (ExportTblRAW!=0){
+            EXPORT_TABLE* ExportTbl=(EXPORT_TABLE*)(file_buffer+ExportTblRAW);
+            ExportTableParser(file_buffer,pathtosave,ExportTbl,SectionTable,SectionCount,ExportTableStart,ExportTableEnd);
         }
-        char_written+=bytes;
+        else{
+            puts("Export Table RAW return 0");
+        }
+    }  
+    if (ImportRVA==0){
+        puts("This program does not have an Import Directory. But ntdll.dll and kernel32.dll are present");
+        fclose(pathtosave);
+        free(file_buffer);
+        free(section_buffer_size);
+        return 1;
     }
-    fputs(section_buffer_size,pathtosave);
     ui ImportRAW=RVAtoRAW(ImportRVA,SectionTable,FileHdr->SectionCount);
     if(ImportRAW==0){
         puts("Invalid Import RVA!");
@@ -150,6 +152,7 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
             fputs("\t",pathtosave);
             fputs("Function not found for this DLL",pathtosave);
             fputs("\n",pathtosave);
+            continue;
         }
         uc step=is64?8:4;
         u64 mask=is64?0x8000000000000000ULL : 0x80000000U;
@@ -180,6 +183,7 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
                     fputs("\t",pathtosave);
                     fputs("[ERROR] Invalid Function Name RVA",pathtosave);
                     fputs("\n",pathtosave);
+                    
                 }
                 else{
                     char *FuncName=(char*)(file_buffer+FuncNameRAW+2);
@@ -191,7 +195,9 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
             CurrentAddress+=step;  
         }
         ImportTbl++;
+
     }
+    
     free(file_buffer);
     free(section_buffer_size);
     puts("Log file is done!");
