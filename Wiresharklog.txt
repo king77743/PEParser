@@ -1,14 +1,45 @@
 	=== FILE IS 64-BIT ===
-Entry point RVA: 00662CB0
-Import Table RVA: 00AACDCC
-Digital Signature: SIGNED (Offset: 00C1AC00)
-Section 1: .text | RVA: 0x1000 | RAW: 0x400
-Section 2: .rdata | RVA: 0x6FF000 | RAW: 0x6FD600
-Section 3: .data | RVA: 0xAEF000 | RAW: 0xAECC00
-Section 4: .pdata | RVA: 0xB0D000 | RAW: 0xB05A00
-Section 5: .qtversi | RVA: 0xB71000 | RAW: 0xB68C00
-Section 6: .rsrc | RVA: 0xB72000 | RAW: 0xB68E00
-Section 7: .reloc | RVA: 0xC15000 | RAW: 0xC0B400
++--------------------------------------------------------+
+|                  PE FILE HEADER INFO                   |
++--------------------------------------------------------+
+  - Machine Architecture : x64 (64-bit)
+  - Number of Sections   : 7
+  - Time Date Stamp      : 25.02.2026 18:02:56
+  - Characteristics      : [EXE] [>2GB] 
++--------------------------------------------------------+
+
++--------------------------------------------------------+
+|            PE32+ OPTIONAL HEADER INFO (64-bit)         |
++--------------------------------------------------------+
+  - Linker Version       : 14.44
+  - Size of Code (Bytes) : 7328256
+  - Entry Point RVA      : 0x00662CB0
+  - Image Base : 0x0000000140000000
+  - Size in Memory       : 12734464 bytes
+  - Subsystem Environment: Windows GUI (Graphical)
+  - Digital Signature    : SIGNED
+  - Export Table RVA: 0x00000000
+  - Security Flags:
+    * [ASLR]       Enabled (ASLR)
+    * [DEP]        Enabled (DEP)
+    * [SEH]        Uses Standard Exception Handling
+    * [Sandbox]    Standard Integrity Level
+    * [CFG Protection] Active (Control Flow Guard)
++--------------------------------------------------------+
+
+  [!] Digital Signature Offset (RAW): 00C1AC00
+
++-------+----------+---------------------+---------------------+---------------------+---------------------+----------+
+|   #   |   Name   |     Virtual RVA     |     Virtual Size    |      Raw Offset     |       Raw Size      |  Rights  |
++-------+----------+---------------------+---------------------+---------------------+---------------------+----------+
+| 1     | .text    | 0x00001000          | 0x006FD077          | 0x00000400          | 0x006FD200          |   R-X    |
+| 2     | .rdata   | 0x006FF000          | 0x003EF53C          | 0x006FD600          | 0x003EF600          |   R--    |
+| 3     | .data    | 0x00AEF000          | 0x0001DBC8          | 0x00AECC00          | 0x00018E00          |   RW-    |
+| 4     | .pdata   | 0x00B0D000          | 0x00063024          | 0x00B05A00          | 0x00063200          |   R--    |
+| 5     | .qtversi | 0x00B71000          | 0x00000010          | 0x00B68C00          | 0x00000200          |   R--    |
+| 6     | .rsrc    | 0x00B72000          | 0x000A2498          | 0x00B68E00          | 0x000A2600          |   R--    |
+| 7     | .reloc   | 0x00C15000          | 0x0000F788          | 0x00C0B400          | 0x0000F800          |   R--    |
++-------+----------+---------------------+---------------------+---------------------+---------------------+----------+
 Import Table RAW: 00AAB3CC
 DLL count: 38
 DLL name: WinSparkle.dll
