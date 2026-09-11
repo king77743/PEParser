@@ -23,6 +23,12 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
     _fseeki64(program,0,SEEK_END);
     u64 file_size=_ftelli64(program);
     _fseeki64(program,0,SEEK_SET);
+    if (file_size<sizeof(DOS_HEADER)){
+        puts("File is too small to be a PE file!");
+        fclose(program);
+        fclose(pathtosave);
+        return -1;
+    }
     uc* file_buffer=(uc*)malloc(file_size);
     if (file_buffer==NULL){
         puts("Memory allocation!");
@@ -45,6 +51,12 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
         free(file_buffer);
         return -1;
     }
+    if (DosHeader->PE_address_in_dos<sizeof(DOS_HEADER) || (u64)DosHeader->PE_address_in_dos+sizeof(FILE_HDR)>file_size){
+        puts("The PE signature exceeded the program’s boundaries!");
+        fclose(pathtosave);
+        free(file_buffer);
+        return -1;
+    }
     FILE_HDR * FileHdr=(FILE_HDR*)(file_buffer+DosHeader->PE_address_in_dos);
     if (FileHdr->signature!=0x00004550){
         puts("PE signature is invalid!");
@@ -53,6 +65,12 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
         return -1;
     }
     us SectionCount=FileHdr->SectionCount;
+    if ((u64)DosHeader->PE_address_in_dos+sizeof(FILE_HDR)+sizeof(OPTIONAL_HEADER_64)>file_size){
+        puts("The offset for the Optional Header is greater than the program!");
+        fclose(pathtosave);
+        free(file_buffer);
+        return -1;
+    }
     uc *PtrToOptional=file_buffer+DosHeader->PE_address_in_dos+24;
     us ArchMagic=*(us*)PtrToOptional;
     if (ArchMagic==0x20B){
@@ -77,22 +95,20 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
         ExportTableEnd=OptHdr32->ExportSize;
         LogOptHdr32(pathtosave,OptHdr32);
     }
-  
-    ui buffer_size = (SectionCount * 64) + 251;
-    uc* section_buffer_size = (uc*)malloc(buffer_size);
-    if (section_buffer_size==NULL){
-        puts("Memory allocattion for Section Table!");
+
+    SECTION_HEADER * SectionTable=(SECTION_HEADER*)(PtrToOptional+FileHdr->SizeOfOptinalHeader);
+    if ((uc*)SectionTable-file_buffer>file_size || ((uc*)SectionTable-file_buffer+(u64)SectionCount*sizeof(SECTION_HEADER)>file_size)){
+        puts("Section table are confused!");
         fclose(pathtosave);
         free(file_buffer);
         return -1;
     }
-    SECTION_HEADER * SectionTable=(SECTION_HEADER*)(PtrToOptional+FileHdr->SizeOfOptinalHeader);
-    if (SectionTableParser(pathtosave, SectionTable, SectionCount, (char*)section_buffer_size, buffer_size) != 0) {
-        puts("Sections are confused!");
+    int SectionTableRes=SectionHeaderParse(pathtosave,file_buffer,file_size,SectionTable,SectionCount);
+    if (SectionTableRes!=0){
+        puts("Failed to parse section table!");
         fclose(pathtosave);
         free(file_buffer);
-        free(section_buffer_size);
-        return -1;
+        return SectionTableRes;
     }
 
     if(ExportRVA!=0){
@@ -109,7 +125,6 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
         puts("This program does not have an Import Directory. But ntdll.dll and kernel32.dll are present");
         fclose(pathtosave);
         free(file_buffer);
-        free(section_buffer_size);
         return 1;
     }
     ui ImportRAW=RVAtoRAW(ImportRVA,SectionTable,FileHdr->SectionCount);
@@ -117,7 +132,6 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
         puts("Invalid Import RVA!");
         fclose(pathtosave);
         free(file_buffer);
-        free(section_buffer_size);
         return -1;
     }
     HEX(&ImportRAW,sizeof(ImportRAW),OutBuffer);
@@ -199,7 +213,6 @@ ui parser(wchar_t * path,wchar_t* PathToSave){
     }
     
     free(file_buffer);
-    free(section_buffer_size);
     puts("Log file is done!");
     return 1;
 }
