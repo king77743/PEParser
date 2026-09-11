@@ -5,6 +5,14 @@
 #include <time.h>
 #include "pe_structures.h"
 
+const char* SectionTable_TableHeader = 
+    "+-------+----------+---------------------+---------------------+---------------------+---------------------+----------+\n"
+    "|   #   |   Name   |     Virtual RVA     |     Virtual Size    |      Raw Offset     |       Raw Size      |  Rights  |\n"
+    "+-------+----------+---------------------+---------------------+---------------------+---------------------+----------+\n";
+const char* table_footer = 
+    "+-------+----------+---------------------+---------------------+---------------------+---------------------+----------+\n";
+    
+
 void us_to_dec(unsigned short value, char* out_buf) {
     int pos = 6; 
     out_buf[pos] = '\0';
@@ -267,31 +275,58 @@ void ExportTableParser(uc* file_buffer, FILE* pathtosave, EXPORT_TABLE* ExportTb
     free(NameJOIN);
 }
 
-ui SectionTableParser(FILE* pathtosave, SECTION_HEADER* SectionTable, us SectionCount, char* section_buffer_size, ui buffer_size) {
-    if (!pathtosave || !SectionTable || !section_buffer_size || buffer_size == 0) return -1;
-    ui char_written = 0, bytes = 0;
-    bytes = (ui)snprintf(section_buffer_size + char_written, buffer_size - char_written,
-        "+-----+----------+-------------------+-------------------+\n"
-        "|  #  |   Name   |    Virtual RVA    |     Raw Offset    |\n"
-        "+-----+----------+-------------------+-------------------+\n");
-    if (bytes >= (buffer_size - char_written)) return -1;
-    char_written += bytes;
-    for (us SectionNow = 0; SectionNow < SectionCount; SectionNow++) {
-        ui space = buffer_size - char_written;
-        bytes = (ui)snprintf(section_buffer_size + char_written, space,
-            "| %-3d | %-8.8s |    0x%08X     |    0x%08X     |\n", 
-            SectionNow + 1, SectionTable[SectionNow].name, 
-            SectionTable[SectionNow].VirtualAddress, SectionTable[SectionNow].PointerToRawData);
-        if (bytes >= space) return -1;
+int SectionHeaderParse(FILE* pathtosave, uc* file_buffer, u64 file_size,SECTION_HEADER* SectionTable, us SectionCount){
+    ui buffer_size = SectionCount * 121;
+    uc* section_buffer_size = (uc*)malloc(buffer_size);
+    if (section_buffer_size==NULL){
+        puts("Memory allocattion for Section Table!");
+        fclose(pathtosave);
+        free(file_buffer);
+        return -1;
+    }
+    int char_written=0, bytes=0, space=0;
+    for(us SectionNow=0; SectionNow<SectionCount; SectionNow++){
+        if (SectionTable[SectionNow].RawSize>0){
+            u64 section_end=(u64)SectionTable[SectionNow].RawSize+(u64)SectionTable[SectionNow].PointerToRawData;
+            if (SectionTable[SectionNow].PointerToRawData>file_size || section_end>file_size){
+                puts("The section is beyond the size limit!");
+                fclose(pathtosave);
+                free(file_buffer);
+                free(section_buffer_size);
+                return -1;
+            }
+        }
+        ui CharacteristicsFlags=SectionTable[SectionNow].Characteristics;
+        char r = (CharacteristicsFlags & 0x40000000) ? 'R' : '-'; 
+        char w = (CharacteristicsFlags & 0x80000000) ? 'W' : '-'; 
+        char x = (CharacteristicsFlags & 0x20000000) ? 'X' : '-';
+        space = buffer_size - char_written;
+        bytes = snprintf((char*)section_buffer_size + char_written, space,
+            "| %-5d | %-8.8s | 0x%08X          | 0x%08X          | 0x%08X          | 0x%08X          |   %c%c%c    |\n",
+            SectionNow + 1,
+            SectionTable[SectionNow].name,
+            SectionTable[SectionNow].VirtualAddress,
+            SectionTable[SectionNow].VirtualSize,      
+            SectionTable[SectionNow].PointerToRawData, 
+            SectionTable[SectionNow].RawSize,          
+            r, w, x                                     
+        );
+        if (bytes < 0 || bytes >= space){
+            puts("sections are confused!");
+            free(section_buffer_size);
+            free(file_buffer);
+            fclose(pathtosave);
+            return -1;
+        }
         char_written += bytes;
     }
-    bytes = (ui)snprintf(section_buffer_size + char_written, buffer_size - char_written,
-        "+-----+----------+-------------------+-------------------+\n\n");
-    if (bytes >= (buffer_size - char_written)) return -1;
-    fputs(section_buffer_size, pathtosave);
+
+    
+    fputs(SectionTable_TableHeader,pathtosave);
+    fputs((char*)section_buffer_size,pathtosave);
+    fputs(table_footer,pathtosave);
+    free(section_buffer_size);
     return 0;
 }
-
-
 
 #endif 
